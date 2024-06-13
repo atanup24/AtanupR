@@ -1,0 +1,72 @@
+import os
+import netCDF4 as nc
+import numpy as np
+import csv
+
+
+# Function to find the nearest index
+def find_nearest(array, value):
+    idx = (np.abs(array - value)).argmin()
+    return idx
+
+
+# Your lat-long points
+latitudes = [
+    23.27187737, 22.96066623, 22.40957856, 21.4919662, 20.72874897, 21.63627939, 20.83837496, 19.61896323,
+    18.48651676, 17.46811657, 16.25965146, 15.14448317, 13.56956482, 11.9933611, 10.82050216, 8.901348797,
+    8.152042708, 9.187636261, 10.16115421, 11.12504578, 12.30878722, 13.71170292, 15.02932679, 15.86510004,
+    16.38021121, 17.08693091, 17.57621375, 18.21227071, 18.91294461, 19.47526774, 19.86566301, 20.3309353,
+    20.83621719, 21.36850844, 21.68682179, 21.66659588, 21.65127281
+]
+longitudes = [
+    68.55422001, 70.13880685, 68.95143915, 69.75873417, 70.90585688, 72.28244867, 72.84109455, 72.73757303,
+    72.88624277, 73.20229758, 73.38141662, 73.92713338, 74.66832367, 75.21725957, 75.95074861, 76.57250172,
+    77.60285495, 78.4822242, 79.19433896, 79.81528088, 79.99280523, 80.12552202, 80.02912329, 81.02140227,
+    81.9509633, 82.34983493, 83.1530734, 83.87091243, 84.62135651, 85.18928623, 86.10675946, 86.70137684,
+    86.93206353, 86.91859678, 87.63815426, 88.13881983, 88.79687374
+]
+
+# Folder containing NetCDF files
+folder_path = r'E:\SHLD\Ecotone'
+
+# Initialize the date for naming CSV files
+start_date = 20120601
+
+# Process each NetCDF file in the folder
+for file_name in os.listdir(folder_path):
+    if file_name.endswith('.nc'):
+        file_path = os.path.join(folder_path, file_name)
+
+        # Load the NetCDF dataset
+        dataset = nc.Dataset(file_path, 'r')
+
+        # Extract the necessary variables
+        latitude = dataset.variables['latitude'][:]
+        longitude = dataset.variables['longitude'][:]
+        ndvi = dataset.variables['NDVI'][0, :, :]  # Assuming the first time index
+
+        # Find the NDVI values for each lat-long point
+        ndvi_values = []
+        for lat, lon in zip(latitudes, longitudes):
+            lat_idx = find_nearest(latitude, lat)
+            lon_idx = find_nearest(longitude, lon)
+            ndvi_value = ndvi[lat_idx, lon_idx]
+            ndvi_values.append((lat, lon, ndvi_value))
+
+        # Create a CSV file path based on the sequence of dates
+        csv_file_name = f'ndvi_values_{start_date}.csv'
+        csv_file_path = os.path.join(folder_path, csv_file_name)
+
+        # Save to CSV
+        with open(csv_file_path, 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            csvwriter.writerow(['Latitude', 'Longitude', 'NDVI'])
+            csvwriter.writerows(ndvi_values)
+
+        # Close the dataset
+        dataset.close()
+
+        print(f"NDVI values saved to {csv_file_path}")
+
+        # Increment the date
+        start_date += 1
